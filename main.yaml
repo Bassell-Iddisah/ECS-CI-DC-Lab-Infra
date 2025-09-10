@@ -207,3 +207,7 @@ Outputs:
   PrivateSubnetIds:
     Description: The IDs of the private subnets
     Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+
+  PublicSubnet1:
+    Description: Public subnet of CICD Lab
+    Value: !Ref PublicSubnet1
