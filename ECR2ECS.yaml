@@ -1,0 +1,182 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "CodePipeline for ECS Blue/Green deployment triggered by ECR image push."
+
+Parameters:
+  PipelineName:
+    Type: String
+    Default: ECS-SpringBoot-Pipeline
+
+  CodePipelineRoleArn:
+    Type: String
+    Description: ARN of the IAM role for CodePipeline.
+
+  CodeDeployRoleArn:
+    Type: String
+    Description: ARN of the IAM role for CodeDeploy.
+
+  EcsClusterName:
+    Type: String
+    Description: Name of the ECS cluster.
+  
+  EcsServiceName:
+    Type: String
+    Description: Name of the ECS service.
+
+  EcrRepositoryName:
+    Type: String
+    Description: Name of the ECR repository to monitor for new images.
+
+  ListenerArn:
+    Type: String
+    Description: ARN of the ALB listener to reroute traffic.
+
+  TargetGroup1Name:
+    Type: String
+    Description: Name of the first target group.
+
+  TargetGroup2Name:
+    Type: String
+    Description: Name of the second target group.
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::AccountId}-springboot-codepipeline-artifacts"
+      VersioningConfiguration:
+        Status: Enabled
+    DeletionPolicy: Retain
+  
+  CodeDeployApp:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Sub "${AWS::StackName}-CodeDeployApp"
+      ComputePlatform: ECS
+    DeletionPolicy: Retain
+
+  DeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName: !Ref CodeDeployApp
+      DeploymentGroupName: !Sub "${AWS::StackName}-DeploymentGroup"
+      ServiceRoleArn: !Ref CodeDeployRoleArn
+      DeploymentConfigName: CodeDeployDefault.ECSAllAtOnce
+      DeploymentStyle:
+        DeploymentType: BLUE_GREEN
+        DeploymentOption: WITH_TRAFFIC_CONTROL
+      BlueGreenDeploymentConfiguration:
+        DeploymentReadyOption:
+          ActionOnTimeout: CONTINUE_DEPLOYMENT
+        TerminateBlueInstancesOnDeploymentSuccess:
+          Action: TERMINATE
+          TerminationWaitTimeInMinutes: 5
+      LoadBalancerInfo:
+        TargetGroupPairInfoList:
+          - ProdTrafficRoute:
+              ListenerArns:
+                - !Ref ListenerArn
+            TargetGroups:
+              - Name: !Ref TargetGroup1Name
+              - Name: !Ref TargetGroup2Name
+      ECSServices:
+        - ServiceName: !Ref EcsServiceName
+          ClusterName: !Ref EcsClusterName
+    DependsOn: CodeDeployApp
+    DeletionPolicy: Retain
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Ref PipelineName
+      RoleArn: !Ref CodePipelineRoleArn
+      ArtifactStore:
+        Location: !Ref ArtifactBucket
+        Type: S3
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: ECRSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: ECR
+                Version: '1'
+              Configuration:
+                RepositoryName: !Ref EcrRepositoryName
+                ImageTag: 'latest'
+              OutputArtifacts:
+                - Name: ImageDetail
+              RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: ECSBlueGreenDeploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CodeDeploy
+                Version: '1'
+              Configuration:
+                ApplicationName: !Ref CodeDeployApp
+                DeploymentGroupName: !Ref DeploymentGroup
+                # Required for ECS Blue/Green: The artifact that contains the ImageDetail.json file.
+                Image1ArtifactName: ImageDetail
+              InputArtifacts:
+                - Name: ImageDetail
+              RunOrder: 1
+    DependsOn:
+      - CodeDeployApp
+      - DeploymentGroup
+
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${AWS::StackName}-ECR-Image-Push-Rule"
+      Description: "Triggers CodePipeline on ECR image push."
+      EventPattern:
+        source:
+          - "aws.ecr"
+        detail-type:
+          - "ECR Image Action"
+        detail:
+          repository-name:
+            - !Ref EcrRepositoryName
+          image-action-type:
+            - "PUSH"
+      Targets:
+        - Arn: !GetAtt CodePipeline.Arn
+          Id: "1"
+          RoleArn: !GetAtt EventBridgeRole.Arn
+  
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: EventBridgeInvokeCodePipeline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "codepipeline:StartPipelineExecution"
+                Resource: !GetAtt CodePipeline.Arn
+
+Outputs:
+  PipelineName:
+    Description: The name of the CodePipeline.
+    Value: !Ref CodePipeline
+
+  CodeDeployAppName:
+    Description: The name of the CodeDeploy application.
+    Value: !Ref CodeDeployApp
+
+  DeploymentGroupName:
+    Description: The name of the CodeDeploy deployment group.
+    Value: !Ref DeploymentGroup
