@@ -28,7 +28,7 @@ Parameters:
     Description: Private Subnet 2 CIDR
   AllowedGithubRepo:
     Type: String
-    Default: Bassell-Iddisah/ECS-CI-DC-Lab-Infra
+    Default: Bassell-Iddisah/ECS-CI-DC-Lab-App
     Description: Allowed Github Repo
   AllowedGithubBranch:
     Type: String
