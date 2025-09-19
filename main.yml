@@ -417,7 +417,7 @@ Resources:
       Protocol: HTTP
       TargetType: ip
       HealthCheckIntervalSeconds: 30
-      HealthCheckPath: "/ping"
+      HealthCheckPath: "/"
       HealthCheckPort: traffic-port
 
   # Target Group (Green)
@@ -430,7 +430,7 @@ Resources:
       Protocol: HTTP
       TargetType: ip
       HealthCheckIntervalSeconds: 30
-      HealthCheckPath: "/ping"
+      HealthCheckPath: "/"
       HealthCheckPort: traffic-port
 
   # ALB Listener (start by pointing to Blue TG)
