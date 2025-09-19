@@ -1,7 +1,7 @@
 template-file-path: main.yml
 parameters:
   PrivateSubnet1Cidr: 10.0.2.0/24
-  AllowedGithubRepo: Bassell-Iddisah/ECS-CI-DC-Lab-Infra
+  AllowedGithubRepo: Bassell-Iddisah/ECS-CI-DC-Lab-App
   PublicSubnet2Cidr: 10.0.1.0/24
   VpcCidr: 10.0.0.0/16
   EnvironmentName: cicd-lab-stack
