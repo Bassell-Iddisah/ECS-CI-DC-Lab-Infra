@@ -459,7 +459,7 @@ Resources:
       Cluster: !Ref ECSCluster
       ServiceName: !Sub ${EnvironmentName}-service
       TaskDefinition: !Ref ECSTaskDefinition
-      DesiredCount: 0
+      DesiredCount: 1
       LaunchType: FARGATE
       DeploymentController:
         Type: CODE_DEPLOY
@@ -617,7 +617,7 @@ Resources:
                   - ecr:BatchCheckLayerAvailability
                 Resource: !GetAtt ECRRepository.Arn
 
-  # S3 Bucket for Pipeline Artifacts
+  # S3 Bucket Artifacts
   ArtifactBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -627,7 +627,6 @@ Resources:
       AccessControl: Private
 
   # Pipeline (only modified Stages section)
-  #################################################################
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -648,8 +647,6 @@ Resources:
               Configuration:
                 S3Bucket: !Ref ArtifactBucket
                 S3ObjectKey: !Sub ${DeploymentZipFileName}
-#                RepositoryName: !Ref ECRRepository
-#                ImageTag: latest
               OutputArtifacts:
                 - Name: SourceArtifact
               RunOrder: 1
