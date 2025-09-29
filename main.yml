@@ -458,7 +458,7 @@ Resources:
       Cluster: !Ref ECSCluster
       ServiceName: !Sub ${EnvironmentName}-service
       TaskDefinition: !Ref ECSTaskDefinition
-      DesiredCount: 0
+      DesiredCount: 1
       LaunchType: FARGATE
       DeploymentController:
         Type: CODE_DEPLOY
