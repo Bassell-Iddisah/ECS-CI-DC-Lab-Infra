@@ -4,7 +4,7 @@ parameters:
   AllowedGithubRepo: Bassell-Iddisah/ECS-CI-DC-Lab-App
   PublicSubnet2Cidr: 10.0.1.0/24
   VpcCidr: 10.0.0.0/16
-  EnvironmentName: cicd-lab-stack
+  EnvironmentName: cicd-lab
   PrivateSubnet2Cidr: 10.0.3.0/24
   AllowedGithubBranch: refs/heads/main
   AppPort: '80'
